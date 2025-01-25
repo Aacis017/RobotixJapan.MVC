@@ -58,7 +58,7 @@ namespace RobotixJapanMVC.Controllers
         }
 
         [HttpGet]
-        public async Task FetchSensorDataApi()
+        public async Task<IActionResult> FetchSensorDataApi()
         {
             var status = await FetchSensorData();
             return Json(new { sensorStatus = status });
@@ -68,7 +68,7 @@ namespace RobotixJapanMVC.Controllers
         {
             try
             {
-                var response = await _httpClient.GetFromJsonAsync(SensorApiUrl);
+                var response = await _httpClient.GetAsync(SensorApiUrl); 
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -87,10 +87,21 @@ namespace RobotixJapanMVC.Controllers
                     return $"Unexpected response: {content}";
                 }
             }
+            catch (HttpRequestException)
+            {
+                return "Can't connect";
+            }
             catch (Exception ex)
             {
                 return $"Error fetching data: {ex.Message}";
             }
         }
+
+
+        public class SensorData
+        {
+            public string Sensor { get; set; }
+        }
+
     }
 }
