@@ -1,0 +1,155 @@
+﻿@model RobotixJapanMVC.Models.HomeViewModel
+
+<div class="container" style="background-color: #f2f2f2; padding: 20px; border-radius: 10px;">
+    <!-- Title Section -->
+    <div class="text-center p-3 mb-4" style="background-color: #00bfae; color: white; border-radius: 5px;">
+        <h2 style="font-family: 'EpilogueBold'; letter-spacing: 0.1em;">P I B O T の 状態</h2>
+    </div>
+
+    <!-- Status Cards -->
+    <div class="row mt-4 g-3">
+        <div class="col-12 col-md-4">
+            <div class="card shadow-sm border-0" style="border-radius: 10px;">
+                <div class="card-body text-center">
+                    <h5 class="card-title" style="color: #00bfae;">バッテリー</h5>
+                    <p class="card-text" style="font-weight: bold; color: #00bfae;">100%</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-4">
+            <div class="card shadow-sm border-0" style="border-radius: 10px;">
+                <div class="card-body text-center">
+                    <h5 class="card-title" style="color: #00bfae;">状況</h5>
+                    <p class="card-text" style="font-weight: bold; color: #00bfae;">Inactive</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-4">
+            <div class="card shadow-sm border-0" style="border-radius: 10px;">
+                <div class="card-body text-center">
+                    <h5 class="card-title" style="color: #00bfae;">水位</h5>
+                    <p id="sensorStatus" class="card-text" style="font-weight: bold; color: #00bfae;">@Model.SensorStatus</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Weather Section -->
+    <div class="card shadow-sm mt-4 border-0" style="border-radius: 10px;">
+        <div class="card-header text-center" style="background-color: AliceBlue; font-size: 1.2em;">
+            Weather Information
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-6">Wind Speed:</div>
+                <div class="col-6 text-end">@Model.WindSpeed</div>
+            </div>
+            <div class="row">
+                <div class="col-6">Precipitation:</div>
+                <div class="col-6 text-end">@Model.Precipitation</div>
+            </div>
+            <div class="row">
+                <div class="col-6">Temperature:</div>
+                <div class="col-6 text-end">@Model.Temperature</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Location Section -->
+    <div class="card shadow-sm mt-4 border-0" style="border-radius: 10px;">
+        <div class="card-header text-center" style="background-color: AliceBlue; font-size: 1.2em;">
+            Device Location
+        </div>
+        <div class="card-body text-center">
+            <div><strong>@Model.LocationName</strong></div>
+            <div>Latitude: @Model.Latitude</div>
+            <div>Longitude: @Model.Longitude</div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="d-flex justify-content-between mt-4">
+        <button id="startButton" class="btn btn-success flex-fill me-2" style="font-weight: bold;">スタート</button>
+        <button id="stopButton" class="btn btn-danger flex-fill ms-2" style="font-weight: bold;">ストップ</button>
+    </div>
+</div>
+
+<script>
+    async function sendGeolocation() {
+        if (!navigator.geolocation) {
+            alert("Geolocation is not supported by your browser.");
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            async function (position) {
+                const latitude = position.coords.latitude;
+                const longitude = position.coords.longitude;
+
+                try {
+                    await fetch('/Home/SetGeolocation', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ latitude, longitude })
+                    });
+                } catch (error) {
+                    console.error("Error sending geolocation:", error.message);
+                }
+            },
+            function (error) {
+                switch (error.code) {
+                    case error.PERMISSION_DENIED:
+                        alert("User denied the request for Geolocation.");
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        alert("Location information is unavailable.");
+                        break;
+                    case error.TIMEOUT:
+                        alert("The request to get user location timed out.");
+                        break;
+                    case error.UNKNOWN_ERROR:
+                        alert("An unknown error occurred.");
+                        break;
+                }
+            }
+        );
+    }
+
+    window.onload = sendGeolocation;
+</script>
+
+<script>
+    let intervalId = null;
+
+    async function fetchSensorStatus() {
+        try {
+            document.getElementById('sensorStatus').textContent = "Fetching...";
+            const response = await fetch('/Home/FetchSensorDataApi');
+
+            if (!response.ok) {
+                throw new Error("Network response was not ok");
+            }
+
+            const data = await response.json();
+            document.getElementById('sensorStatus').textContent = data.sensorStatus;
+        } catch (error) {
+            console.error("Error fetching sensor status:", error);
+            document.getElementById('sensorStatus').textContent = "Error fetching data";
+        }
+    }
+
+    document.getElementById('startButton').addEventListener('click', () => {
+        if (!intervalId) {
+            intervalId = setInterval(fetchSensorStatus, 2000);
+        }
+    });
+
+    document.getElementById('stopButton').addEventListener('click', () => {
+        if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = null;
+        }
+    });
+</script>
