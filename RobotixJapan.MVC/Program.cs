@@ -1,28 +1,37 @@
 var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
 builder.Services.AddControllersWithViews();
 
-// Add HttpClient to the dependency injection container
-builder.Services.AddHttpClient(); // This enables the use of HttpClient in controllers
+builder.Services.AddHttpClient();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowArduino", builder =>
+    {
+        builder.WithOrigins("https://robotixjapandevice.com")
+               .AllowAnyMethod()
+               .AllowAnyHeader();
+    });
+});
+
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.AllowSynchronousIO = true;
+    options.ListenAnyIP(5000);
+});
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    app.UseHsts(); // Enforces strict HTTPS usage in production
+    app.UseHsts();
 }
 
+app.UseCors("AllowArduino");
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-
 app.UseRouting();
-
 app.UseAuthorization();
 
-// Map default controller route
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");

@@ -56,46 +56,65 @@ namespace RobotixJapanMVC.Controllers
             _userGeolocation = geolocation;
             return Ok();
         }
-
         [HttpGet]
         public async Task<IActionResult> FetchSensorDataApi()
         {
-            var status = await FetchSensorData();
-            return Json(new { sensorStatus = status });
+            try
+            {
+                var status = await FetchSensorData();
+                return Json(new { sensorStatus = status });
+            }
+            catch (Exception ex)
+            {
+                // Log the exception as needed
+                return StatusCode(500, new { error = ex.Message });
+            }
         }
 
         private async Task<string> FetchSensorData()
         {
             try
             {
-                var response = await _httpClient.GetAsync(SensorApiUrl); 
+                var response = await _httpClient.GetAsync(SensorApiUrl);
 
                 if (!response.IsSuccessStatusCode)
                 {
                     return $"Error: {response.StatusCode}";
                 }
 
-                var content = await response.Content.ReadAsStringAsync();
+                var contentType = response.Content.Headers.ContentType?.MediaType;
 
-                try
+                if (contentType != "application/json")
                 {
-                    var sensorData = JsonConvert.DeserializeObject<SensorData>(content);
-                    return sensorData?.Sensor ?? "No data";
+                    // Log the response content for debugging
+                    var content = await response.Content.ReadAsStringAsync();
+                    return $"Unexpected content type: {contentType}. Response: {content}";
                 }
-                catch
+
+                // Deserialize the JSON response
+                var sensorData = await response.Content.ReadFromJsonAsync<SensorData>();
+
+                if (sensorData == null || string.IsNullOrEmpty(sensorData.Sensor))
                 {
-                    return $"Unexpected response: {content}";
+                    return "No data available";
                 }
+
+                return sensorData.Sensor;
             }
             catch (HttpRequestException)
             {
-                return "Can't connect";
+                return "Can't connect to the API";
+            }
+            catch (JsonException ex)
+            {
+                return $"Invalid JSON: {ex.Message}";
             }
             catch (Exception ex)
             {
                 return $"Error fetching data: {ex.Message}";
             }
         }
+
 
 
         public class SensorData
